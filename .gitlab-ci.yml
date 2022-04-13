@@ -2,7 +2,7 @@ image: laravelsail/php81-composer
 
 variables:
   MYSQL_DATABASE: scq-project-laravel
-  MYSQL_ROOT_PASSWORD: root
+  MYSQL_ROOT_PASSWORD: password
   DB_HOST: mysql
 
 stages:
