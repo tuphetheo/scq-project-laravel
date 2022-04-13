@@ -1,7 +1,7 @@
 image: laravelsail/php81-composer
 
 variables:
-  MYSQL_DATABASE: minimalist_blog_laravel
+  MYSQL_DATABASE: scq-project-laravel
   MYSQL_ROOT_PASSWORD: root
   DB_HOST: mysql
 
