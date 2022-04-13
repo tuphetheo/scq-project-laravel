@@ -18,13 +18,14 @@ jobs:
           composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
           cp .env.example .env
           php artisan key:generate
-      - name: Cache vendor
+
+      - name: Cache vendor files
         uses: actions/cache@v3.0.2
         with:
           path: vendor/
           key: composer
 
-      - name: Upload dependencies
+      - name: Upload environment variables
         uses: actions/upload-artifact@v3.0.0
         with:
           path: .env
@@ -50,7 +51,7 @@ jobs:
         with:
           name: env
 
-      - name: Cache vendor
+      - name: Retrieve vendor files
         uses: actions/cache@v3.0.2
         with:
           path: vendor/
@@ -60,7 +61,8 @@ jobs:
         run: |
           docker-php-ext-install pdo_mysql
           docker-php-ext-enable pdo_mysql
-      - name: Import database
+
+      - name: Make migrations
         run: php artisan migrate:fresh --seed
 
       - name: Upload database
@@ -90,18 +92,18 @@ jobs:
         uses: actions/download-artifact@v3.0.0
         with:
           name: database
-          
-      - name: Retrieve .env
+
+      - name: Retrieve environment variables
         uses: actions/download-artifact@v3.0.0
         with:
           name: env
 
-      - name: Warm up cache
+      - name: Retrieve vendor files
         uses: actions/cache@v3.0.2
         with:
           path: vendor/
           key: composer
-          
+
       - name: Install php extensions
         run: |
           docker-php-ext-install pdo_mysql
@@ -115,26 +117,26 @@ jobs:
           composer require "squizlabs/php_codesniffer=*" --dev
           php vendor/bin/phpcs --standard=PSR2 --ignore=app/Support/helpers.php app
         continue-on-error: true
-        
-      - name: Run Copy/Paste tests
+
+      - name: Run copy/paste tests
         run: |
           test -f phpcpd.phar || curl -L https://phar.phpunit.de/phpcpd.phar -o phpcpd.phar
           php phpcpd.phar app/ --min-lines=50
         continue-on-error: true
-        
+
       - name: Run dependencies tests
         run: |
           curl -L  https://github.com/fabpot/local-php-security-checker/releases/download/v1.2.0/local-php-security-checker_1.2.0_linux_386 --output local-php-security-checker
           chmod +x local-php-security-checker
           ./local-php-security-checker --format=junit --path=./composer.lock > security-checker-report.xml
         continue-on-error: true
-        
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        
+
       - name: Upload security report
         uses: actions/upload-artifact@v3.0.0
         with:
