@@ -65,7 +65,7 @@ codestyle:
   dependencies: []
   script:
     - composer require "squizlabs/php_codesniffer=*" --dev
-    - php vendor/bin/phpcs --standard=PSR2 --ignore=app/Support/helpers.php app
+    - php vendor/bin/phpcs --standard=PSR2 app
   allow_failure: true
 
 phpcpd:
