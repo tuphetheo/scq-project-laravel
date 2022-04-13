@@ -1,0 +1,92 @@
+image: laravelsail/php81-composer
+
+variables:
+  MYSQL_DATABASE: minimalist_blog_laravel
+  MYSQL_ROOT_PASSWORD: root
+  DB_HOST: mysql
+
+stages:
+  - preparation
+  - build
+  - test
+
+before_script:
+  - docker-php-ext-install pdo_mysql
+
+composer:
+  stage: preparation
+  script:
+    - php -v
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+    - cp .env.example .env
+    - php artisan key:generate
+  artifacts:
+    paths:
+      - vendor/
+      - .env
+    expire_in: 1 days
+    when: always
+  cache:
+    paths:
+      - vendor/
+
+db-seeding:
+  stage: build
+  services:
+    - mysql:latest
+  dependencies:
+    - composer
+  script:
+    - php artisan migrate:fresh --seed
+  artifacts:
+    paths:
+      - storage/logs # for debugging
+      - db.sql
+    expire_in: 1 days
+    when: always
+
+unit_test:
+  stage: test
+  services:
+    - mysql:latest
+  dependencies:
+    - composer
+    - db-seeding
+  script:
+    - vendor/bin/phpunit
+  artifacts:
+    paths:
+      - ./storage/logs # for debugging
+    expire_in: 1 days
+    when: on_failure
+
+codestyle:
+  stage: test
+  dependencies: []
+  script:
+    - composer require "squizlabs/php_codesniffer=*" --dev
+    - php vendor/bin/phpcs --standard=PSR2 --ignore=app/Support/helpers.php app
+  allow_failure: true
+
+phpcpd:
+  stage: test
+  script:
+    - test -f phpcpd.phar || curl -L https://phar.phpunit.de/phpcpd.phar -o phpcpd.phar
+    - php phpcpd.phar app/ --min-lines=50
+  dependencies: []
+  cache:
+    paths:
+      - phpcpd.phar
+  allow_failure: true
+
+check-deps:
+  stage: test
+  script:
+    - curl -L  https://github.com/fabpot/local-php-security-checker/releases/download/v1.2.0/local-php-security-checker_1.2.0_linux_386 --output local-php-security-checker
+    - chmod +x local-php-security-checker
+    - ./local-php-security-checker --format=junit --path=./composer.lock > security-checker-report.xml
+  artifacts:
+    reports:
+      junit:
+        - security-checker-report.xml
+  allow_failure: true
