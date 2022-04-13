@@ -3,6 +3,7 @@ image: laravelsail/php81-composer
 variables:
   MYSQL_DATABASE: scq_project_laravel
   MYSQL_ROOT_PASSWORD: password
+  MYSQL_USERNAME: sail
   DB_HOST: mysql
 
 stages:
