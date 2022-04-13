@@ -1,0 +1,142 @@
+name: main
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  preparation:
+    runs-on: ubuntu-latest
+    container: laravelsail/php81-composer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.0
+
+      - name: Install the project
+        run: |
+          php -v
+          composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+          cp .env.example .env
+          php artisan key:generate
+      - name: Cache vendor
+        uses: actions/cache@v3.0.2
+        with:
+          path: vendor/
+          key: composer
+
+      - name: Upload dependencies
+        uses: actions/upload-artifact@v3.0.0
+        with:
+          path: .env
+          name: env
+
+  build:
+    runs-on: ubuntu-latest
+    container: laravelsail/php81-composer
+    services:
+      mysql:
+        image: mysql:latest
+        env:
+          MYSQL_DATABASE: minimalist_blog_laravel
+          MYSQL_ROOT_PASSWORD: root
+          DB_HOST: mysql
+    needs: preparation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3.0.0
+        with:
+          name: env
+
+      - name: Cache vendor
+        uses: actions/cache@v3.0.2
+        with:
+          path: vendor/
+          key: composer
+
+      - name: Install php extensions
+        run: |
+          docker-php-ext-install pdo_mysql
+          docker-php-ext-enable pdo_mysql
+      - name: Import database
+        run: php artisan migrate:fresh --seed
+
+      - name: Upload database
+        uses: actions/upload-artifact@v3.0.0
+        with:
+          path: |
+            storage/logs
+            db.sql
+          name: database
+
+  tests:
+    runs-on: ubuntu-latest
+    container: laravelsail/php81-composer
+    needs: [preparation, build]
+    services:
+      mysql:
+        image: mysql:latest
+        env:
+          MYSQL_DATABASE: minimalist_blog_laravel
+          MYSQL_ROOT_PASSWORD: root
+          DB_HOST: mysql
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3.0.0
+
+      - name: Download database
+        uses: actions/download-artifact@v3.0.0
+        with:
+          name: database
+          
+      - name: Retrieve .env
+        uses: actions/download-artifact@v3.0.0
+        with:
+          name: env
+
+      - name: Warm up cache
+        uses: actions/cache@v3.0.2
+        with:
+          path: vendor/
+          key: composer
+          
+      - name: Install php extensions
+        run: |
+          docker-php-ext-install pdo_mysql
+          docker-php-ext-enable pdo_mysql
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit
+
+      - name: Run code style tests
+        run: |
+          composer require "squizlabs/php_codesniffer=*" --dev
+          php vendor/bin/phpcs --standard=PSR2 --ignore=app/Support/helpers.php app
+        continue-on-error: true
+        
+      - name: Run Copy/Paste tests
+        run: |
+          test -f phpcpd.phar || curl -L https://phar.phpunit.de/phpcpd.phar -o phpcpd.phar
+          php phpcpd.phar app/ --min-lines=50
+        continue-on-error: true
+        
+      - name: Run dependencies tests
+        run: |
+          curl -L  https://github.com/fabpot/local-php-security-checker/releases/download/v1.2.0/local-php-security-checker_1.2.0_linux_386 --output local-php-security-checker
+          chmod +x local-php-security-checker
+          ./local-php-security-checker --format=junit --path=./composer.lock > security-checker-report.xml
+        continue-on-error: true
+        
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        
+      - name: Upload security report
+        uses: actions/upload-artifact@v3.0.0
+        with:
+          path: security-checker-report.xml
+          name: security-report
