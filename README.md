@@ -1,3 +1,5 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tuphetheo_scq-project-laravel&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tuphetheo_scq-project-laravel)
+[![main](https://github.com/tuphetheo/scq-project-laravel/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/tuphetheo/scq-project-laravel/actions/workflows/main.yml)
 # Source-Code Quality project
 This project is for a 3iL course in source-code quality.  
 This is a minimalist blog in Laravel and PHP 8.1.
