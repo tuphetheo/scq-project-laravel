@@ -131,12 +131,6 @@ jobs:
           ./local-php-security-checker --format=junit --path=./composer.lock > security-checker-report.xml
         continue-on-error: true
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
       - name: Upload security report
         uses: actions/upload-artifact@v3.0.0
         with:
